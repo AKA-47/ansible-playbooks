@@ -1,0 +1,30 @@
+---
+- hosts: debian
+  tasks:
+
+
+    - name: Check if check-mk-agent is installed
+      command: dpkg-query -W check-mk-agent
+      register: check_mk_agent_check_deb
+      failed_when: check_mk_agent_check_deb.rc > 1
+      changed_when: check_mk_agent_check_deb.rc == 1
+
+    - name: Install xinetd
+      apt: pkg=xinetd state=installed update_cache=true
+      notify:
+        - start xinetd
+
+    - name: Download check-mk-agent
+      get_url:
+        url="http://git.mathias-kettner.de/git/?p=check_mk.git;a=blob_plain;f=agents/check-mk-agent_1.2.7i4-1_all.deb;hb=HEAD"
+        dest="/tmp/check-mk-agent_1.2.7i4-1_all.deb"
+      when: check_mk_agent_check_deb.rc == 1
+
+    - name: Install check-mk-agent
+      apt: deb="/tmp/check-mk-agent_1.2.7i4-1_all.deb"
+      sudo: true
+      when: check_mk_agent_check_deb.rc == 1
+
+  handlers:
+    - name: start xinetd
+      service: name=xinetd state=started
